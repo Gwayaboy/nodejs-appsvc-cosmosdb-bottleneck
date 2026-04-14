@@ -48,10 +48,9 @@ jobs:
       - name: Run Load Test
         uses: azure/load-testing@v1
         with:
-          loadTestConfigFile: 'SampleApp.yaml'
-          loadTestResource: ${{ vars.LOAD_TEST_RESOURCE }}
+          loadtestConfigFile: 'SampleApp.yaml'
+          loadtestResource: ${{ vars.LOAD_TEST_RESOURCE }}
           resourceGroup: ${{ vars.LOAD_TEST_RESOURCE_GROUP }}
-          loadTestId: ${{ github.event.inputs.testId || vars.LOAD_TEST_ID || 'sample-app-test' }}
           env: |
             [
               {
