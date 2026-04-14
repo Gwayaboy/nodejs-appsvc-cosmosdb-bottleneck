@@ -9,14 +9,14 @@ on:
         - main
 
 env:
-  AZURE_WEBAPP_NAME: "<Name of your webapp>"    # set this to your application's name
-  LOAD_TEST_RESOURCE: "<Name of your load test resource>"
-  LOAD_TEST_RESOURCE_GROUP: "<Name of your load test resource group>"
+  AZURE_WEBAPP_NAME: "DemoBottleNeckWebApp"    # set this to your application's name
+  LOAD_TEST_RESOURCE: "ALT-Kantar-Demo"
+  LOAD_TEST_RESOURCE_GROUP: "kantar-demo-rg"
   AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
   NODE_VERSION: '14.15.1'                # set this to the node version to use
-  LOCATION: "West US"
-  APPINSIGHTLOCATION: "West US"
-  DATABASEACCOUNTLOCATION: "westus"
+  LOCATION: "eastus"
+  APPINSIGHTLOCATION: "westus2"
+  DATABASEACCOUNTLOCATION: "westus2"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -104,4 +104,38 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: loadTestResults
+          path: ${{ github.workspace }}/loadTest
+
+  runExistingLoadTest:
+    name: Run Existing Load Test
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitHub Actions 
+        uses: actions/checkout@v2
+          
+      - name: Login to Azure
+        uses: azure/login@v1
+        continue-on-error: false
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: Run sample-app-test Load Test
+        uses: azure/load-testing@v1
+        with:
+          loadTestConfigFile: 'SampleApp.yaml'
+          loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}
+          resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+          loadTestId: 'sample-app-test'
+          env: |
+            [
+              {
+              "name": "webapp",
+              "value": "${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+              }
+            ]
+      
+      - uses: actions/upload-artifact@v2
+        with:
+          name: existingLoadTestResults
           path: ${{ github.workspace }}/loadTest
