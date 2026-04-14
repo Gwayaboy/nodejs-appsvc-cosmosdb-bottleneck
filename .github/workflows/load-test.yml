@@ -1,5 +1,6 @@
 # Load Testing Workflow
 # Runs the existing sample-app-test against the deployed application
+# Uses OIDC (Federated Identity) for secure Azure authentication
 
 name: Run Load Test
 
@@ -17,13 +18,11 @@ on:
       webappName:
         description: 'Web App Name to test'
         required: false
-        default: 'DemoBottleNeckWebApp'
 
-env:
-  AZURE_WEBAPP_NAME: "DemoBottleNeckWebApp"
-  LOAD_TEST_RESOURCE: "ALT-Kantar-Demo"
-  LOAD_TEST_RESOURCE_GROUP: "kantar-demo-rg"
-  SUBSCRIPTION_ID: "518d3b64-280a-4d38-8b93-ea7404fe5ea1"
+# Required for OIDC authentication
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   loadTest:
@@ -34,23 +33,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
           
-      - name: Login to Azure
+      - name: Login to Azure using OIDC
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           
       - name: Run Load Test
         uses: azure/load-testing@v1
         with:
           loadTestConfigFile: 'SampleApp.yaml'
-          loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}
-          resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
-          loadTestId: ${{ github.event.inputs.testId || 'sample-app-test' }}
+          loadTestResource: ${{ vars.LOAD_TEST_RESOURCE }}
+          resourceGroup: ${{ vars.LOAD_TEST_RESOURCE_GROUP }}
+          loadTestId: ${{ github.event.inputs.testId || vars.LOAD_TEST_ID || 'sample-app-test' }}
           env: |
             [
               {
               "name": "webapp",
-              "value": "${{ github.event.inputs.webappName || env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+              "value": "${{ github.event.inputs.webappName || vars.AZURE_WEBAPP_NAME }}.azurewebsites.net"
               }
             ]
       
@@ -67,10 +68,10 @@ jobs:
         run: |
           echo "## Load Test Completed ✅" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Test ID:** sample-app-test" >> $GITHUB_STEP_SUMMARY
-          echo "**Target:** ${{ github.event.inputs.webappName || env.AZURE_WEBAPP_NAME }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
-          echo "**Load Test Resource:** ${{ env.LOAD_TEST_RESOURCE }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Resource Group:** ${{ env.LOAD_TEST_RESOURCE_GROUP }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Test ID:** ${{ github.event.inputs.testId || vars.LOAD_TEST_ID || 'sample-app-test' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ github.event.inputs.webappName || vars.AZURE_WEBAPP_NAME }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
+          echo "**Load Test Resource:** ${{ vars.LOAD_TEST_RESOURCE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Resource Group:** ${{ vars.LOAD_TEST_RESOURCE_GROUP }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "View detailed results in the Azure Portal:" >> $GITHUB_STEP_SUMMARY
-          echo "https://portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/${{ env.SUBSCRIPTION_ID }}/resourceGroups/${{ env.LOAD_TEST_RESOURCE_GROUP }}/providers/Microsoft.LoadTestService/loadtests/${{ env.LOAD_TEST_RESOURCE }}/overview" >> $GITHUB_STEP_SUMMARY
+          echo "https://portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.LOAD_TEST_RESOURCE_GROUP }}/providers/Microsoft.LoadTestService/loadtests/${{ vars.LOAD_TEST_RESOURCE }}/overview" >> $GITHUB_STEP_SUMMARY
