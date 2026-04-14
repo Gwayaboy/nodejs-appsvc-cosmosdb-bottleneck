@@ -105,37 +105,3 @@ jobs:
         with:
           name: loadTestResults
           path: ${{ github.workspace }}/loadTest
-
-  runExistingLoadTest:
-    name: Run Existing Load Test
-    needs: build-and-deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout GitHub Actions 
-        uses: actions/checkout@v2
-          
-      - name: Login to Azure
-        uses: azure/login@v1
-        continue-on-error: false
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          
-      - name: Run sample-app-test Load Test
-        uses: azure/load-testing@v1
-        with:
-          loadTestConfigFile: 'SampleApp.yaml'
-          loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}
-          resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
-          loadTestId: 'sample-app-test'
-          env: |
-            [
-              {
-              "name": "webapp",
-              "value": "${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
-              }
-            ]
-      
-      - uses: actions/upload-artifact@v2
-        with:
-          name: existingLoadTestResults
-          path: ${{ github.workspace }}/loadTest
